@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import {
   LayoutDashboard,
+  DatabaseZapIcon,
   Users,
   GraduationCap,
   BookOpen,        // Added for Subjects
@@ -16,11 +17,13 @@ import { usePathname } from 'next/navigation';
 
 const navItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'Departments', href: '/admin/dashboard/department', icon: DatabaseZapIcon }, // Added
   { name: 'Faculties', href: '/admin/dashboard/faculties', icon: Users },
   { name: 'Students', href: '/admin/dashboard/students', icon: GraduationCap },
   { name: 'Subjects', href: '/admin/dashboard/subjects', icon: BookOpen },   // Added
   { name: 'Timetable', href: '/admin/dashboard/timetable', icon: Calendar },
   { name: 'Generate Timetable', href: '/admin/dashboard/generate-timetable', icon: FileText },
+  
 ];
 
 export default function DashboardLayout({ children }) {
@@ -72,6 +75,17 @@ export default function DashboardLayout({ children }) {
             );
           })}
         </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={() => (window.location.href = '/')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200"
+          >
+            <X className="h-5 w-5" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Mobile Overlay */}

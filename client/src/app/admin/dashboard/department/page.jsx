@@ -1,26 +1,41 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Building2 } from 'lucide-react';
 import DashboardLayout from '../../components/DashboardLayout';
 import AddDepartment from './components/AddDepartments';
 
 export default function DepartmentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('departments'); // State for active tab
-  const [departments, setDepartments] = useState([
-    { id: 1, name: 'Computer Science', code: 'CSE', facultyCount: 12, studentCount: 245 },
-    { id: 2, name: 'Electronics', code: 'ECE', facultyCount: 10, studentCount: 198 },
-    { id: 3, name: 'Mechanical', code: 'ME', facultyCount: 9, studentCount: 176 },
-    { id: 4, name: 'Civil', code: 'CE', facultyCount: 8, studentCount: 154 },
-    { id: 5, name: 'Information Technology', code: 'IT', facultyCount: 7, studentCount: 83 },
-  ]);
+  const [activeTab, setActiveTab] = useState('departments');
+  const [departments, setDepartments] = useState([]);
+
+  const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  // Fetch departments from API
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await fetch(`${BASE_API_URL}/admin/department/get-departments`);
+        if (response.ok) {
+          const data = await response.json();
+          setDepartments(data.departments || []);
+        } else {
+          console.error('Failed to fetch departments');
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+      }
+    };
+
+    fetchDepartments();
+  }, [BASE_API_URL]);
 
   // Filter departments based on search
   const filteredDepartments = useMemo(() => {
     return departments.filter((dept) =>
-      dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dept.code.toLowerCase().includes(searchTerm.toLowerCase())
+      dept.department.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dept.department.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [departments, searchTerm]);
 
@@ -71,7 +86,7 @@ export default function DepartmentManagement() {
                   placeholder="Search departments by name or code..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  className="w-full pl-10 pr-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                 />
               </div>
             </div>
@@ -90,30 +105,36 @@ export default function DepartmentManagement() {
                           <Building2 className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900">{dept.name}</h3>
-                          <p className="text-sm text-gray-500">Code: {dept.code}</p>
+                          <h3 className="font-semibold text-gray-900">{dept.department.name}</h3>
+                          <p className="text-sm text-gray-500">Code: {dept.department.code}</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Faculty</span>
-                        <span className="font-medium text-gray-900">{dept.facultyCount}</span>
+                        <span className="text-gray-600">Total Classes</span>
+                        <span className="font-medium text-gray-900">{dept.totalClasses}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Students</span>
-                        <span className="font-medium text-gray-900">{dept.studentCount}</span>
+                        <span className="text-gray-600">Total Labs</span>
+                        <span className="font-medium text-gray-900">{dept.totalLabs}</span>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-200 flex gap-2">
-                      <button className="flex-1 text-sm py-1.5 px-3 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition">
-                        Edit
-                      </button>
-                      <button className="flex-1 text-sm py-1.5 px-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                        View Details
-                      </button>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-700">Classes:</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600">
+                        {dept.classes.map((cls, index) => (
+                          <li key={index}>{cls.name} (Room {cls.number})</li>
+                        ))}
+                      </ul>
+                      <h4 className="text-sm font-medium text-gray-700 mt-2">Labs:</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600">
+                        {dept.labs.map((lab, index) => (
+                          <li key={index}>{lab.name} (Lab {lab.number})</li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 ))

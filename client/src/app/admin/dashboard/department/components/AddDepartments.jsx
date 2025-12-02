@@ -10,7 +10,6 @@ export default function AddDepartment() {
   // ──────────────────────────────────────────────────────
   const [deptOption, setDeptOption] = useState('existing');
   const [selectedDeptId, setSelectedDeptId] = useState('');
-  const [newDeptName, setNewDeptName] = useState('');
 
   const [totalClasses, setTotalClasses] = useState('');
   const [totalLabs, setTotalLabs] = useState('');
@@ -30,7 +29,7 @@ export default function AddDepartment() {
     { id: '3', name: 'B.E Electronics and Communication Engineering', code: 'ECE' },
     { id: '4', name: 'B.Tech Artificial Intelligence and Data Science', code: 'AIDS' },
     { id: '5', name: 'B.Tech Computer Science and Business Systems', code: 'CSBS' },
-    { id: '6', name: 'Mechanical', code: 'ME' },
+    { id: '6', name: 'B.E Mechanical Engineering', code: 'ME' },
   ];
 
 
@@ -76,8 +75,7 @@ export default function AddDepartment() {
   // Form Validation
   // ──────────────────────────────────────────────────────
   const isFormValid = () => {
-    if (deptOption === 'existing' && !selectedDeptId) return false;
-    if (deptOption === 'new' && !newDeptName.trim()) return false;
+    if (!selectedDeptId) return false; // Updated validation
     if (!totalClasses || !totalLabs) return false;
 
     // If classes/labs count > 0 → all fields must be filled
@@ -94,13 +92,7 @@ export default function AddDepartment() {
     e.preventDefault();
     if (!isFormValid()) return;
 
-    const department = deptOption === 'existing'
-      ? existingDepartments.find(d => d.id === selectedDeptId)
-      : {
-        id: null,
-        name: newDeptName.trim(),
-        code: newDeptName.trim().split(' ').map(w => w[0]?.toUpperCase()).join('') || 'DEPT'
-      };
+    const department = existingDepartments.find(d => d.id === selectedDeptId);
 
     const payload = {
       department,
@@ -134,8 +126,8 @@ export default function AddDepartment() {
   // Render
   // ──────────────────────────────────────────────────────
   return (
-    <div className="p-4 lg:p-8 bg-gray-50 min-h-screen text-black">
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
+    <div className="p-4 lg:p-2 bg-gray-50 min-h-screen text-black">
+      <form onSubmit={handleSubmit} className="max-w-7xl mx-auto space-y-8">
 
         {/* Department Selection */}
         <section className="bg-white p-6 rounded-xl shadow-sm border">
@@ -144,39 +136,17 @@ export default function AddDepartment() {
             Department
           </h2>
 
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="radio" name="dept" checked={deptOption === 'existing'} onChange={() => setDeptOption('existing')} className="w-5 h-5 text-blue-600" />
-              <span className="font-medium">Existing Department</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="radio" name="dept" checked={deptOption === 'new'} onChange={() => setDeptOption('new')} className="w-5 h-5 text-blue-600" />
-              <span className="font-medium">Create New</span>
-            </label>
-          </div>
-
-          {deptOption === 'existing' ? (
-            <select
-              value={selectedDeptId}
-              onChange={(e) => setSelectedDeptId(e.target.value)}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">-- Select Department --</option>
-              {existingDepartments.map(d => (
-                <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={newDeptName}
-              onChange={(e) => setNewDeptName(e.target.value)}
-              placeholder="e.g., Civil Engineering"
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          )}
+          <select
+            value={selectedDeptId}
+            onChange={(e) => setSelectedDeptId(e.target.value)}
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="">-- Select Department --</option>
+            {existingDepartments.map(d => (
+              <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+            ))}
+          </select>
         </section>
 
         {/* Capacity */}

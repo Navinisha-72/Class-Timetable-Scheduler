@@ -39,4 +39,16 @@ const addDepartment = async (req, res) => {
     }
 };
 
-module.exports = { addDepartment };
+const getDepartments = async (req, res) => {
+    try {
+        const snapshot = await db.collection('departments').get();
+        const departments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        return res.status(200).json({ success: true, departments });
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        return res.status(500).json({ success: false, message: 'Server error', details: error.message });
+    }
+};
+
+module.exports = { addDepartment, getDepartments };
