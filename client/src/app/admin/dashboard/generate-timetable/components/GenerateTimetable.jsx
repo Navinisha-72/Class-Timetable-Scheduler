@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, BookOpen, Users, Clock, Sparkles, Save } from 'lucide-react';
+import { X, Calendar, BookOpen, Users, Clock, Sparkles, Save, Zap } from 'lucide-react';
 
 const formatTime = (time) => {
   const [hours, minutes] = time.split(':').map(Number);
@@ -24,7 +24,9 @@ export default function GenerateTimetable({ closeModal }) {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatedData, setGeneratedData] = useState(null);
-  const [saving, setSaving] = useState(false); // For save button loading state
+  const [saving, setSaving] = useState(false);
+  const [useConstraintSolver, setUseConstraintSolver] = useState(false); // NEW: Toggle for CP-SAT
+  const [generating, setGenerating] = useState(false); // NEW: Loading state for generation
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +78,86 @@ export default function GenerateTimetable({ closeModal }) {
     setSelectedTimetable(template || null);
   };
 
+  // NEW: CP-SAT Constraint-based generation
+  const handleConstraintGenerate = async () => {
+    if (!selectedDepartment || !selectedSemester || !selectedClass || subjects.length === 0) {
+      alert('Please complete all fields');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const allSlots = selectedTimetable?.schedule || [];
+      
+      // Extract periods
+      const periods = [];
+      allSlots.forEach(slot => {
+        if (slot.type === 'period') {
+          periods.push(slot.startTime);
+        }
+      });
+
+      // Prepare payload for CP-SAT solver
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/generate/generate-optimized`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            department: selectedDepartment,
+            semester: selectedSemester,
+            class: selectedClass,
+            subjects,
+            periods,
+            days,
+            constraints: {
+              facultyConstraints: true,
+              roomConstraints: true,
+              balanceDays: true,
+            }
+          })
+        }
+      );
+
+      const result = await response.json();
+      if (result.success) {
+        // Transform CP-SAT grid to display format
+        const grid = days.map(day => {
+          const row = { day };
+          allSlots.forEach(slot => {
+            if (slot.type === 'period') {
+              row[slot.startTime] = result.data.grid[day]?.[slot.startTime] || null;
+            } else {
+              row[slot.startTime] = { isBreak: true, name: slot.name };
+            }
+          });
+          return row;
+        });
+
+        setGeneratedData({
+          title: `Generated Timetable (CP-SAT) - ${selectedDepartment} Section ${selectedClass.charAt(0)}`,
+          template: selectedTimetable,
+          allSlots,
+          grid,
+          subjects,
+          selectedClass,
+          selectedSemester,
+          selectedDepartment,
+          method: result.data.method
+        });
+      } else {
+        alert('Error: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error generating optimized timetable:', error);
+      alert('Failed to generate timetable with constraint solver');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // ORIGINAL: Random generation
   const handleGenerate = () => {
     if (!selectedDepartment || !selectedSemester || !selectedClass || !selectedTimetableId || subjects.length === 0) {
       alert('Please complete all fields');
@@ -136,11 +218,47 @@ export default function GenerateTimetable({ closeModal }) {
       subjects,
       selectedClass,
       selectedSemester,
-      selectedDepartment
+      selectedDepartment,
+      method: 'Random Shuffle'
     });
   };
 
-  // New Save Function
+  // NEW: Validate timetable constraints
+  const handleValidateConstraints = async () => {
+    if (!generatedData) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/generate/validate-constraints`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timetableGrid: generatedData.grid.reduce((acc, row) => {
+              acc[row.day] = row;
+              return acc;
+            }, {}),
+            constraints: {
+              noFacultyConflicts: true,
+              noRoomConflicts: true
+            }
+          })
+        }
+      );
+
+      const result = await response.json();
+      if (result.isValid) {
+        alert('✓ All constraints satisfied! Safe to save.');
+      } else {
+        alert(`⚠ Found ${result.violations.length} constraint violation(s):\n\n${result.violations.map(v => v.message).join('\n')}`);
+      }
+    } catch (error) {
+      console.error('Error validating constraints:', error);
+      alert('Failed to validate constraints');
+    }
+  };
+
+  // Save function
   const handleSave = async () => {
     if (!generatedData) return;
 
@@ -153,6 +271,7 @@ export default function GenerateTimetable({ closeModal }) {
       timetableTemplate: selectedTimetableId,
       generatedTimetable: {
         generatedAt: new Date().toISOString(),
+        method: generatedData.method,
         days: generatedData.grid.map((row) => {
           const dayData = { day: row.day, periods: {} };
           Object.keys(row).forEach((key) => {
@@ -191,7 +310,7 @@ export default function GenerateTimetable({ closeModal }) {
 
       if (result.success) {
         alert('Timetable saved successfully!');
-        closeModal(); // Optional: close modal after save
+        closeModal();
       } else {
         alert('Failed to save timetable: ' + (result.message || 'Unknown error'));
       }
@@ -216,7 +335,7 @@ export default function GenerateTimetable({ closeModal }) {
 
   const renderTimetable = () => {
     if (!generatedData) return null;
-    const { allSlots, grid, title, selectedClass, selectedSemester, selectedDepartment } = generatedData;
+    const { allSlots, grid, title, selectedClass, selectedSemester, selectedDepartment, method } = generatedData;
     const colors = ['bg-blue-50', 'bg-emerald-50', 'bg-amber-50', 'bg-rose-50', 'bg-purple-50', 'bg-cyan-50'];
     const textColors = ['text-blue-900', 'text-emerald-900', 'text-amber-900', 'text-rose-900', 'text-purple-900', 'text-cyan-900'];
 
@@ -227,7 +346,7 @@ export default function GenerateTimetable({ closeModal }) {
           <div className="bg-linear-to-r from-slate-900 to-slate-800 text-white px-5 py-4">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4" />
-              <span className="text-xs font-medium text-gray-300">GENERATED TIMETABLE</span>
+              <span className="text-xs font-medium text-gray-300">{method.toUpperCase()}</span>
             </div>
             <div className="mt-2 text-sm opacity-90">
               <span className="font-medium">{selectedClass}</span> • Semester {selectedSemester} • {selectedDepartment}
@@ -307,6 +426,25 @@ export default function GenerateTimetable({ closeModal }) {
           </button>
         </div>
         <div className="p-5">
+          {/* Method Selector - NEW */}
+          <div className="mb-5 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useConstraintSolver}
+                onChange={(e) => {
+                  setUseConstraintSolver(e.target.checked);
+                  setGeneratedData(null); // Reset generated data when switching
+                }}
+                className="w-4 h-4 accent-slate-900"
+              />
+              <div>
+                <span className="text-sm font-semibold text-gray-900">Use CP-SAT Constraint Solver</span>
+                <p className="text-xs text-gray-600">Automatically avoids faculty and room conflicts</p>
+              </div>
+            </label>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div>
               <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1.5">
@@ -370,7 +508,7 @@ export default function GenerateTimetable({ closeModal }) {
 
           {renderTimetable()}
 
-          <div className="flex justify-end gap-3 mt-6 mb-4">
+          <div className="flex flex-wrap justify-end gap-3 mt-6 mb-4">
             <button
               onClick={closeModal}
               className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 font-medium"
@@ -378,25 +516,43 @@ export default function GenerateTimetable({ closeModal }) {
               Cancel
             </button>
 
-            <button
-              onClick={handleGenerate}
-              disabled={!isFormComplete}
-              className="px-5 py-2 text-sm bg-slate-900 text-white font-medium rounded-md hover:bg-slate-800 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {generatedData ? 'Regenerate' : 'Generate'}
-            </button>
-
-            {/* Save Button - Only shows after generation */}
-            {generatedData && (
+            {useConstraintSolver ? (
               <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-5 py-2 text-sm bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed flex items-center gap-1.5 transition"
+                onClick={handleConstraintGenerate}
+                disabled={!isFormComplete || generating}
+                className="px-5 py-2 text-sm bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
-                <Save className="w-3.5 h-3.5" />
-                {saving ? 'Saving...' : 'Save Timetable'}
+                <Zap className="w-3.5 h-3.5" />
+                {generating ? 'Generating...' : generatedData ? 'Regenerate (CP-SAT)' : 'Generate (CP-SAT)'}
               </button>
+            ) : (
+              <button
+                onClick={handleGenerate}
+                disabled={!isFormComplete}
+                className="px-5 py-2 text-sm bg-slate-900 text-white font-medium rounded-md hover:bg-slate-800 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {generatedData ? 'Regenerate' : 'Generate'}
+              </button>
+            )}
+
+            {generatedData && (
+              <>
+                <button
+                  onClick={handleValidateConstraints}
+                  className="px-4 py-2 text-sm border border-blue-300 bg-blue-50 text-blue-600 font-medium rounded-md hover:bg-blue-100"
+                >
+                  Validate
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-5 py-2 text-sm bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed flex items-center gap-1.5 transition"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {saving ? 'Saving...' : 'Save Timetable'}
+                </button>
+              </>
             )}
           </div>
         </div>

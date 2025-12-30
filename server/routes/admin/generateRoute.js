@@ -1,5 +1,5 @@
 const express = require('express');
-const { getDetails, saveTimetable, getAllGeneratedTimetables, deleteGeneratedTimetable } = require('../../controllers/admin/generateController');
+const { getDetails, saveTimetable, getAllGeneratedTimetables, deleteGeneratedTimetable, generateOptimizedTimetable, validateTimetableConstraints } = require('../../controllers/admin/generateController');
 
 const router = express.Router();
 
@@ -14,5 +14,12 @@ router.get('/get-generated-timetable', getAllGeneratedTimetables);
 
 // Route to delete a generated timetable
 router.delete('/delete-timetable/:id', deleteGeneratedTimetable);
+
+// NEW: CP-SAT Constraint Programming Routes
+// Route to generate optimized timetable using CP-SAT
+router.post('/generate-optimized', generateOptimizedTimetable);
+
+// Route to validate timetable against constraints
+router.post('/validate-constraints', validateTimetableConstraints);
 
 module.exports = router;

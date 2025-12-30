@@ -45,5 +45,5 @@ app.use((req, res) => {
 // Start server
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
-    console.log('✅ Connected to CSP Database Successfully...');
+    console.log('✅ Connected to Database Successfully...');
 });
