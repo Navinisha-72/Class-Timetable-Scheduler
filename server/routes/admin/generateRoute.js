@@ -15,7 +15,6 @@ router.get('/get-generated-timetable', getAllGeneratedTimetables);
 // Route to delete a generated timetable
 router.delete('/delete-timetable/:id', deleteGeneratedTimetable);
 
-// NEW: CP-SAT Constraint Programming Routes
 // Route to generate optimized timetable using CP-SAT
 router.post('/generate-optimized', generateOptimizedTimetable);
 

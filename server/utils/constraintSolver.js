@@ -1,14 +1,3 @@
-/**
- * CP-SAT Constraint Programming Solver for Timetable Generation
- * Pure JavaScript implementation without external dependencies
- * Handles constraints like:
- * - No faculty conflicts
- * - No room double-booking
- * - Subject scheduling constraints
- * - Balanced distribution across days
- */
-
-// Optional: Try to use or-tools if available, otherwise use pure JS
 let orTools = null;
 try {
   orTools = require('or-tools');

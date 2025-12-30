@@ -25,8 +25,8 @@ export default function GenerateTimetable({ closeModal }) {
   const [loading, setLoading] = useState(true);
   const [generatedData, setGeneratedData] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [useConstraintSolver, setUseConstraintSolver] = useState(false); // NEW: Toggle for CP-SAT
-  const [generating, setGenerating] = useState(false); // NEW: Loading state for generation
+  const [useConstraintSolver, setUseConstraintSolver] = useState(false); 
+  const [generating, setGenerating] = useState(false); 
 
   useEffect(() => {
     const fetchData = async () => {
